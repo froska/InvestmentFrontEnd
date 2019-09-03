@@ -12,11 +12,20 @@
     <link rel="stylesheet" href="css/index.css" />
     <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/toastr.css" />
+    <link rel="stylesheet" href="DataTables/datatables.css" />
 
     <script src="js/jquery-3.4.1.js"></script>
     <script src="js/popper.min.js"></script>
     <script src="bootstrap/js/bootstrap.min.js"></script>
     <script src="js/toastr.js"></script>
+    <script
+      type="text/javascript"
+      src="DataTables/DataTables-1.10.18/js/jquery.dataTables.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="DataTables/DataTables-1.10.18/js/dataTables.bootstrap.js"
+    ></script>
   </head>
   <body>
     <nav class="navbar navbar-expand-md navbar-dark bg-dark  fixed-top">
@@ -58,6 +67,75 @@
         // show home page
         showHomePage();
 
+        function showDataTable(data, inMonths, data2) {
+          console.log(data2);
+          let totalSubscription = data2.totalSubscription;
+          let totalInterest = data2.totalInterest;
+          let totalInvestment = data2.totalInvestment;
+          let html =
+            '<table id="example" class="table table-striped table-bordered" width="100%"></table>';
+          $("#content").html(html);
+
+          const months = [
+            " ",
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December"
+          ];
+
+          const cols = [];
+          for (let i = 0; i <= inMonths; i++) {
+            cols.push({ title: months[i] });
+          }
+
+          $.extend(true, $.fn.dataTable.defaults, {
+            searching: false,
+            ordering: false,
+            paging: false,
+            info: false
+          });
+
+          $("#example").DataTable({
+            data: data,
+            columns: cols
+          });
+
+          let html2 =
+            "\
+          <div class='card'>\
+              <div class='card-header'>Investment Result</div>\
+              <div class='card-body'>\
+                  <h5 class='card-title'>Total Breakdown</h5>\
+                  <div class='card-text'>" +
+            "Total Subscription: " +
+            totalSubscription.toLocaleString("en-NG", {
+              style: "currency",
+              currency: "NGN"
+            }) +
+            "<br>Total Interest Earned: " +
+            totalInterest.toLocaleString("en-NG", {
+              style: "currency",
+              currency: "NGN"
+            }) +
+            "<br>Total Investment: " +
+            totalInvestment.toLocaleString("en-NG", {
+              style: "currency",
+              currency: "NGN"
+            }) +
+            "</div> </div>  </div>";
+
+          $("#content").append(html2);
+        }
+
         function showHomePage() {
           //  page html stored in a variable
           var html =
@@ -75,13 +153,14 @@
                       </div>\
        \
                       <div class="form-group">\
-                          <label for="rate">Interest Rate (Perannum)</label>\
+                          <label for="rate">Interest Rate (% Perannum)</label>\
                           <input type="text" class="form-control" name="rate" id="rate" required />\
                       </div>\
-                       <button type="submit" class="btn btn-primary">Calculate</button>\
+                       <button id="test" class="btn btn-primary">Calculate</button>\
                   </form>';
 
           $("#content").html(html);
+          $("#response").html("");
         }
         // show Input form
         $(document).on("click", "#home", function() {
@@ -100,74 +179,141 @@
                       </div>\
        \
                       <div class="form-group">\
-                          <label for="rate">Interest Rate (Perannum)</label>\
+                          <label for="rate">Interest Rate (% Perannum)</label>\
                           <input type="text" class="form-control" name="rate" id="rate" required />\
                       </div>\
-                       <button type="submit" class="btn btn-primary">Calculate</button>\
+                       <button id="test" class="btn btn-primary">Calculate</button>\
                   </form>';
 
           $("#content").html(html);
+          $("#response").html("");
         });
 
-        $(document).on("submit", "#input_form", function() {
+        $(document).on("click", "#test", function(event) {
+          event.preventDefault();
           // get form data
-          var input_form = $(this);
+          var input_form = $("#input_form");
           var form_data = JSON.stringify(input_form.serializeObject());
-
           console.log(form_data);
 
-          // submit form data to api
-          $.ajax({
+          var dfd1 = jQuery.ajax({
+            url: "http://localhost:49838/api/Investment/GetCompleteInvestment",
+            type: "POST",
+            contentType: "application/json",
+            data: form_data
+          });
+
+          dfd1.id = 1;
+
+          var dfd2 = jQuery.ajax({
             url: "http://localhost:49838/api/Investment/GetTotalInvestment",
             type: "POST",
             contentType: "application/json",
-            data: form_data,
-            success: function(result) {
-              // if response is a success display
-              $("#response").html(
-                "<div class='alert alert-success'>Successful.</div>"
-              );
-              console.log(result);
-              var totalSubscription = result.totalSubscription;
-              var totalInterest = result.totalInterest;
-              var totalInvestment = result.totalInvestment;
+            data: form_data
+          });
 
-              var html =
-                "\
-          <div class='card'>\
-              <div class='card-header'>Investment Result</div>\
-              <div class='card-body'>\
-                  <h5 class='card-title'>Total Breakdown</h5>\
-                  <div class='card-text'>" +
-                "Total Subscription: " +
-                totalSubscription.toLocaleString("en-NG", {
-                  style: "currency",
-                  currency: "NGN"
-                }) +
-                "<br>Total Interest Earned: " +
-                totalInterest.toLocaleString("en-NG", {
-                  style: "currency",
-                  currency: "NGN"
-                }) +
-                "<br>Total Investment: " +
-                totalInvestment.toLocaleString("en-NG", {
-                  style: "currency",
-                  currency: "NGN"
-                }) +
-                "</div> </div>  </div>";
+          dfd2.id = 2;
 
-              $("#content").html(html);
-            },
-            error: function(xhr, resp, text) {
-              // on error, tell the user it failed
+          jQuery
+            .when(dfd1, dfd2)
+            .done(function(result1, result2) {
+              let list = Array(result1[0]);
+              let months = list[0].length;
+              let rowHeader = [
+                "Principal Balance",
+                "Subscription",
+                "Interest Earned",
+                "Closing Balance"
+              ];
+              console.log(list[0][0][Object.keys(list[0][0])[0]]);
+
+              let data = [];
+              for (let j = 0; j < 4; j++) {
+                let row = [];
+
+                for (let i = 0; i < list[0].length; i++) {
+                  if (i === 0) {
+                    row.push(rowHeader[j]);
+                    console.log(rowHeader[j]);
+                  }
+                  row.push(list[0][i][Object.keys(list[0][i])[j]]);
+                }
+                data.push(row);
+              }
+              console.log(data);
+              showDataTable(data, months, Array(result2[0])[0]);
+            })
+            .fail(function(request1, request2) {
+              // id: 1
+              console.log("id: " + request1.id);
+              console.log("id: " + request1);
+              console.log("id: " + request2.id);
+              console.log("id: " + request2);
               $("#response").html(
                 "<div class='alert alert-danger'>Unable to perform calculation. Please contact admin.</div>"
               );
-            }
-          });
-
-          return false;
+            });
         });
+
+        // $(document).on("submit", "#input_form", function() {
+        //   // get form data
+        //   var input_form = $(this);
+        //   var form_data = JSON.stringify(input_form.serializeObject());
+
+        //   console.log(form_data);
+
+        //   // submit form data to api
+        //   $.ajax({
+        //     url: "http://localhost:49838/api/Investment/GetTotalInvestment",
+        //     type: "POST",
+        //     contentType: "application/json",
+        //     data: form_data,
+        //     success: function(result) {
+        //       // if response is a success display
+        //       $("#response").html(
+        //         "<div class='alert alert-success'>Successful.</div>"
+        //       );
+        //       console.log(result);
+        //       var totalSubscription = result.totalSubscription;
+        //       var totalInterest = result.totalInterest;
+        //       var totalInvestment = result.totalInvestment;
+
+        //       var html =
+        //         "\
+        //   <div class='card'>\
+        //       <div class='card-header'>Investment Result</div>\
+        //       <div class='card-body'>\
+        //           <h5 class='card-title'>Total Breakdown</h5>\
+        //           <div class='card-text'>" +
+        //         "Total Subscription: " +
+        //         totalSubscription.toLocaleString("en-NG", {
+        //           style: "currency",
+        //           currency: "NGN"
+        //         }) +
+        //         "<br>Total Interest Earned: " +
+        //         totalInterest.toLocaleString("en-NG", {
+        //           style: "currency",
+        //           currency: "NGN"
+        //         }) +
+        //         "<br>Total Investment: " +
+        //         totalInvestment.toLocaleString("en-NG", {
+        //           style: "currency",
+        //           currency: "NGN"
+        //         }) +
+        //         "</div> </div>  </div>";
+
+        //       $("#content").html(html);
+        //     },
+        //     error: function(xhr, resp, text) {
+        //       // on error, tell the user it failed
+        //       $("#response").html(
+        //         "<div class='alert alert-danger'>Unable to perform calculation. Please contact admin.</div>"
+        //       );
+        //     }
+        //   });
+
+        //   return false;
+        // });
 
         // function to make form values to json format
         $.fn.serializeObject = function() {
